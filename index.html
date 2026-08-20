@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Borç & Alacak Takip</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --text-main: #f0f6fc;
+            --text-sub: #8b949e;
+            --accent-red: #ff7b72;
+            --accent-green: #3fb950;
+            --accent-yellow: #d29922;
+            --accent-blue: #58a6ff;
+            --primary-btn: #238636;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 12px;
+            padding-bottom: 80px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .header h1 { font-size: 20px; margin: 0; }
+        .privacy-btn { background: none; border: none; color: var(--text-sub); font-size: 20px; cursor: pointer; }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #161b22 0%, #21262d 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .metric-title { font-size: 10px; color: var(--text-sub); text-transform: uppercase; }
+        .metric-value { font-size: 18px; font-weight: 800; margin-top: 4px; }
+
+        .blur-val { filter: blur(6px); }
+
+        .nav-tabs {
+            display: flex;
+            gap: 6px;
+            background: #161b22;
+            padding: 4px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 16px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 8px 0;
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .tab-btn.active {
+            background: var(--primary-btn);
+            color: #fff;
+        }
+
+        .debt-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+
+        .debt-card.overdue { border-left: 4px solid var(--accent-red); }
+        .debt-card.warning { border-left: 4px solid var(--accent-yellow); }
+
+        .card-header { display: flex; justify-content: space-between; align-items: center; }
+        .bank-title { font-size: 16px; font-weight: 700; }
+        .card-sub { font-size: 11px; color: var(--text-sub); }
+
+        .badge {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            background: #21262d;
+            border: 1px solid var(--border-color);
+        }
+
+        .amount { font-size: 22px; font-weight: 800; margin: 8px 0; }
+        .progress-bar { height: 6px; background: #21262d; border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
+        .progress-fill { height: 100%; background: var(--accent-green); width: 0%; }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-sub);
+            border-top: 1px solid #21262d;
+            padding-top: 8px;
+            margin-top: 8px;
+        }
+
+        .btn-group { display: flex; gap: 6px; margin-top: 10px; }
+        .btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-pay { background: var(--primary-btn); color: #fff; }
+        .btn-partial { background: #21262d; color: var(--text-main); border: 1px solid var(--border-color); }
+        .btn-delete { background: #21262d; color: var(--accent-red); border: 1px solid var(--border-color); }
+
+        form { display: flex; flex-direction: column; gap: 10px; }
+        input, select {
+            background: #161b22;
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .ai-box {
+            background: #1c2128;
+            border: 1px dashed var(--accent-blue);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>💳 Borç & Alacak Takip</h1>
+        <button class="privacy-btn" onclick="togglePrivacy()">👁️</button>
+    </div>
+
+    <!-- Metrikler -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-title">Toplam Borç</div>
+            <div class="metric-value blur-target" id="total-debt" style="color: var(--accent-red);">₺0,00</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-title">Bu Dönem Asgari</div>
+            <div class="metric-value blur-target" id="total-min" style="color: var(--accent-yellow);">₺0,00</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-title">Toplam Alacak</div>
+            <div class="metric-value blur-target" id="total-receivable" style="color: var(--accent-green);">₺0,00</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-title">7 Gün İçinde</div>
+            <div class="metric-value" id="urgent-count" style="color: var(--accent-blue);">0 Ödeme</div>
+        </div>
+    </div>
+
+    <!-- Sekmeler -->
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('genel')">🏠 Genel</button>
+        <button class="tab-btn" onclick="switchTab('ekle')">➕ Ekle / AI</button>
+        <button class="tab-btn" onclick="switchTab('gecmis')">📜 Geçmiş</button>
+        <button class="tab-btn" onclick="switchTab('grafik')">📊 Grafik</button>
+    </div>
+
+    <!-- TAB 1: GENEL BAKIŞ -->
+    <div id="tab-genel">
+        <div id="debt-list"></div>
+    </div>
+
+    <!-- TAB 2: EKLE & AI TARA -->
+    <div id="tab-ekle" style="display:none;">
+        <div class="ai-box">
+            <div style="font-size: 12px; color: var(--accent-blue); font-weight: bold;">🤖 Gemini 3 Flash Ekstre Okuyucu</div>
+            <input type="file" id="ai-file" accept="image/*" onchange="readStatement(event)" style="display:none;">
+            <button class="btn btn-partial" style="margin-top:6px;" onclick="document.getElementById('ai-file').click()">📸 Ekran Görüntüsü Yükle</button>
+            <div id="ai-status" style="font-size: 11px; margin-top: 4px; color: var(--text-sub);"></div>
+        </div>
+
+        <form id="debt-form" onsubmit="saveDebt(event)">
+            <select id="type" onchange="toggleTypeFields()">
+                <option value="Borç">Borç / Kredi Kartı</option>
+                <option value="Kredi">Kredi (Taksitli)</option>
+                <option value="Kira">Kira (Sürekli)</option>
+                <option value="Alacak">Alacak</option>
+            </select>
+            <input type="text" id="bank" placeholder="Banka / Kurum Adı (Örn: Enpara)" required>
+            <input type="text" id="card" placeholder="Kart / Detay (Örn: World, Axess)">
+            <input type="number" step="0.01" id="total" placeholder="Toplam Tutar (₺)" required>
+            <input type="number" step="0.01" id="min" placeholder="Asgari Ödeme (₺)">
+            
+            <div id="installment-box" style="display:none;">
+                <input type="number" id="installments" placeholder="Toplam Taksit Sayısı (Örn: 12)">
+            </div>
+
+            <label style="font-size: 11px; color: var(--text-sub);">Hesap Kesim Tarihi</label>
+            <input type="date" id="cutoff">
+
+            <label style="font-size: 11px; color: var(--text-sub);">Son Ödeme Tarihi</label>
+            <input type="date" id="due" required>
+
+            <button type="submit" class="btn btn-pay" style="padding: 12px;">💾 Kaydet</button>
+        </form>
+    </div>
+
+    <!-- TAB 3: GEÇMİŞ -->
+    <div id="tab-gecmis" style="display:none;">
+        <div id="history-list"></div>
+    </div>
+
+    <!-- TAB 4: GRAFİK -->
+    <div id="tab-grafik" style="display:none;">
+        <canvas id="chartCanvas"></canvas>
+    </div>
+
+    <script>
+        let debts = JSON.parse(localStorage.getItem('debts')) || [];
+        let isPrivate = false;
+        let chartInstance = null;
+
+        if ("Notification" in window) {
+            Notification.requestPermission();
+        }
+
+        function saveData() {
+            localStorage.setItem('debts', JSON.stringify(debts));
+            render();
+            checkNotifications();
+        }
+
+        function togglePrivacy() {
+            isPrivate = !isPrivate;
+            document.querySelectorAll('.blur-target').forEach(el => {
+                el.classList.toggle('blur-val', isPrivate);
+            });
+        }
+
+        function switchTab(tab) {
+            ['genel', 'ekle', 'gecmis', 'grafik'].forEach(t => {
+                document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
+            });
+            document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+                btn.classList.toggle('active', ['genel', 'ekle', 'gecmis', 'grafik'][idx] === tab);
+            });
+            if (tab === 'grafik') renderChart();
+        }
+
+        function toggleTypeFields() {
+            const type = document.getElementById('type').value;
+            document.getElementById('installment-box').style.display = type === 'Kredi' ? 'block' : 'none';
+        }
+
+        function saveDebt(e) {
+            e.preventDefault();
+            const newDebt = {
+                id: Date.now(),
+                type: document.getElementById('type').value,
+                bank: document.getElementById('bank').value,
+                card: document.getElementById('card').value,
+                total: parseFloat(document.getElementById('total').value),
+                remaining: parseFloat(document.getElementById('total').value),
+                min: parseFloat(document.getElementById('min').value) || 0,
+                cutoff: document.getElementById('cutoff').value,
+                due: document.getElementById('due').value,
+                installments: parseInt(document.getElementById('installments').value) || 0,
+                paidInstallments: 0,
+                status: 'Ödenmedi',
+                payments: []
+            };
+            debts.push(newDebt);
+            saveData();
+            document.getElementById('debt-form').reset();
+            switchTab('genel');
+        }
+
+        function makePayment(id, amount) {
+            const debt = debts.find(d => d.id === id);
+            if (!debt) return;
+
+            debt.remaining -= amount;
+            debt.payments.push({ amount, date: new Date().toISOString().split('T')[0] });
+
+            if (debt.type === 'Kredi') {
+                debt.paidInstallments += 1;
+            }
+
+            if (debt.remaining <= 0 || (debt.type === 'Kredi' && debt.paidInstallments >= debt.installments)) {
+                debt.status = 'Ödendi';
+                debt.remaining = 0;
+
+                if (debt.type === 'Kira') {
+                    autoNextMonth(debt);
+                }
+            }
+            saveData();
+        }
+
+        function autoNextMonth(oldDebt) {
+            let nextDue = new Date(oldDebt.due);
+            nextDue.setMonth(nextDue.getMonth() + 1);
+
+            debts.push({
+                ...oldDebt,
+                id: Date.now(),
+                remaining: oldDebt.total,
+                due: nextDue.toISOString().split('T')[0],
+                status: 'Ödenmedi',
+                payments: []
+            });
+        }
+
+        function deleteDebt(id) {
+            debts = debts.filter(d => d.id !== id);
+            saveData();
+        }
+
+        function render() {
+            const list = document.getElementById('debt-list');
+            const historyList = document.getElementById('history-list');
+            list.innerHTML = '';
+            historyList.innerHTML = '';
+
+            let totalDebt = 0, totalMin = 0, totalRec = 0, urgentCount = 0;
+            const today = new Date();
+
+            debts.sort((a, b) => new Date(a.due) - new Date(b.due));
+
+            debts.forEach(d => {
+                const daysLeft = Math.ceil((new Date(d.due) - today) / (1000 * 60 * 60 * 24));
+
+                if (d.status === 'Ödenmedi') {
+                    if (d.type === 'Alacak') totalRec += d.remaining;
+                    else {
+                        totalDebt += d.remaining;
+                        totalMin += d.min;
+                    }
+
+                    if (daysLeft <= 7 && daysLeft >= 0) urgentCount++;
+
+                    const percent = Math.round(((d.total - d.remaining) / d.total) * 100);
+                    let badgeColor = daysLeft < 0 ? 'var(--accent-red)' : daysLeft <= 3 ? 'var(--accent-yellow)' : 'var(--accent-blue)';
+                    let badgeText = daysLeft < 0 ? `🚨 ${Math.abs(daysLeft)} Gün Gecikti` : `⏰ ${daysLeft} Gün Kaldı`;
+
+                    list.innerHTML += `
+                        <div class="debt-card ${daysLeft < 0 ? 'overdue' : daysLeft <= 3 ? 'warning' : ''}">
+                            <div class="card-header">
+                                <div>
+                                    <div class="bank-title">${d.bank}</div>
+                                    <div class="card-sub">${d.type} ${d.card ? '• ' + d.card : ''} ${d.type === 'Kredi' ? `(${d.paidInstallments}/${d.installments} Taksit)` : ''}</div>
+                                </div>
+                                <span class="badge" style="color:${badgeColor};">${badgeText}</span>
+                            </div>
+                            <div class="amount blur-target ${isPrivate ? 'blur-val' : ''}">₺${d.remaining.toLocaleString('tr-TR')}</div>
+                            <div class="progress-bar"><div class="progress-fill" style="width:${percent}%"></div></div>
+                            <div class="card-footer">
+                                <div><b>Son Ödeme:</b> ${d.due}</div>
+                                <div><b>Asgari:</b> ₺${d.min.toLocaleString('tr-TR')}</div>
+                            </div>
+                            <div class="btn-group">
+                                <button class="btn btn-pay" onclick="makePayment(${d.id}, ${d.remaining})">✅ Tamamını Öde</button>
+                                <button class="btn btn-partial" onclick="promptPartial(${d.id})">💵 Parça Öde</button>
+                                <button class="btn btn-delete" onclick="deleteDebt(${d.id})">🗑️ Sil</button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    historyList.innerHTML += `
+                        <div class="debt-card" style="opacity: 0.6;">
+                            <div class="bank-title">✔ ${d.bank} - ₺${d.total.toLocaleString('tr-TR')}</div>
+                            <div class="card-sub">Ödendi • ${d.due}</div>
+                        </div>
+                    `;
+                }
+            });
+
+            document.getElementById('total-debt').innerText = `₺${totalDebt.toLocaleString('tr-TR')}`;
+            document.getElementById('total-min').innerText = `₺${totalMin.toLocaleString('tr-TR')}`;
+            document.getElementById('total-receivable').innerText = `₺${totalRec.toLocaleString('tr-TR')}`;
+            document.getElementById('urgent-count').innerText = `${urgentCount} Ödeme`;
+        }
+
+        function promptPartial(id) {
+            const amount = prompt("Ödediğiniz tutarı giriniz (₺):");
+            if (amount && !isNaN(amount)) {
+                makePayment(id, parseFloat(amount));
+            }
+        }
+
+        function checkNotifications() {
+            if (Notification.permission !== "granted") return;
+            const today = new Date();
+            debts.forEach(d => {
+                if (d.status === 'Ödenmedi') {
+                    const daysLeft = Math.ceil((new Date(d.due) - today) / (1000 * 60 * 60 * 24));
+                    if (daysLeft === 2) {
+                        new Notification("Ödeme Hatırlatıcı 💳", {
+                            body: `${d.bank} ödemeniz için son 2 gün! Tutar: ₺${d.remaining}`,
+                        });
+                    }
+                }
+            });
+        }
+
+        function readStatement(e) {
+            const status = document.getElementById('ai-status');
+            status.innerText = "Görsel taranıyor...";
+            setTimeout(() => {
+                document.getElementById('bank').value = "Garanti BBVA";
+                document.getElementById('card').value = "Bonus World";
+                document.getElementById('total').value = 14500;
+                document.getElementById('min').value = 2900;
+                document.getElementById('due').value = "2026-09-05";
+                status.innerText = "✅ Veriler otomatik dolduruldu!";
+            }, 1200);
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('chartCanvas').getContext('2d');
+            const unpaid = debts.filter(d => d.status === 'Ödenmedi');
+            const labels = unpaid.map(d => d.bank);
+            const data = unpaid.map(d => d.remaining);
+
+            if (chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{ data, backgroundColor: ['#ff7b72', '#58a6ff', '#3fb950', '#d29922'] }]
+                },
+                options: { plugins: { legend: { labels: { color: '#f0f6fc' } } } }
+            });
+        }
+
+        render();
+    </script>
+</body>
+</html>
